@@ -49,7 +49,11 @@ func main() {
 	flag.Parse()
 
 	file, err := os.Open(*filename)
-	defer file.Close()
+	defer func() {
+		if err == nil {
+			file.Close()
+		}
+	}()
 
 	if err != nil {
 		panic("CSV with questions is essential to run the quiz. Try again or use -h if need a help.")
