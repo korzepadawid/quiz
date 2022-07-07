@@ -18,7 +18,7 @@ const (
 
 	TIME_FLAG_NAME    = "time"
 	TIME_FLAG_DEFAULT = 3
-	TIME_FLAG_USAGE   = "You can specify a path to CSV with questions so that the program can load new questions."
+	TIME_FLAG_USAGE   = "You can specify a time for answering the questions."
 )
 
 type Problem struct {
