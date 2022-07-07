@@ -12,8 +12,13 @@ import (
 )
 
 const (
-	FILE_FLAG_DEFAULT_FILE = "./problems.csv"
-	FILE_FLAG_USAGE        = "You can specify a path to CSV with questions so that the program can load new questions."
+	FILE_FLAG_NAME    = "file"
+	FILE_FLAG_DEFAULT = "./problems.csv"
+	FILE_FLAG_USAGE   = "You can specify a path to CSV with questions so that the program can load new questions."
+
+	TIME_FLAG_NAME    = "time"
+	TIME_FLAG_DEFAULT = 3
+	TIME_FLAG_USAGE   = "You can specify a path to CSV with questions so that the program can load new questions."
 )
 
 type Problem struct {
@@ -26,8 +31,21 @@ type Result struct {
 	Total int
 }
 
+func (p Problem) IsCorrect(answer string) bool {
+	return strings.Trim(answer, " ") == p.Answer
+}
+
+func (r Result) PrintSummary() {
+	fmt.Printf("User answered %d problems correctly. Scored %d of %d.\n", r.Score, r.Score, r.Total)
+}
+
+func (r *Result) IncreaseScore() {
+	r.Score++
+}
+
 func main() {
-	filename := flag.String("file", FILE_FLAG_DEFAULT_FILE, FILE_FLAG_USAGE)
+	filename := flag.String(FILE_FLAG_NAME, FILE_FLAG_DEFAULT, FILE_FLAG_USAGE)
+	time := flag.Int(TIME_FLAG_NAME, TIME_FLAG_DEFAULT, TIME_FLAG_USAGE)
 	flag.Parse()
 
 	file, err := os.Open(*filename)
@@ -38,17 +56,9 @@ func main() {
 	}
 
 	problems := readProblemsFromCsv(file)
-	result := askQuestions(problems)
+	result := askQuestions(problems, *time)
 
-	result.printSummary()
-}
-
-func (p Problem) isCorrect(answer string) bool {
-	return strings.Trim(answer, " ") == p.Answer
-}
-
-func (r Result) printSummary() {
-	fmt.Printf("User answered %d problems correctly. Scored %d of %d.\n", r.Score, r.Score, r.Total)
+	result.PrintSummary()
 }
 
 func readProblemsFromCsv(f *os.File) *[]Problem {
@@ -74,7 +84,7 @@ func readProblemsFromCsv(f *os.File) *[]Problem {
 	return &problems
 }
 
-func askQuestions(problems *[]Problem) Result {
+func askQuestions(problems *[]Problem, time int) Result {
 	result := Result{Score: 0, Total: len(*problems)}
 
 	for idx, problem := range *problems {
@@ -84,16 +94,16 @@ func askQuestions(problems *[]Problem) Result {
 
 		go getUserInput(inputChannel, idx, problem)
 
-		go timer(timeExceedChannel)
+		go timer(timeExceedChannel, time)
 
 		select {
 		case answer := <-inputChannel:
-			if problem.isCorrect(answer) {
-				result.Score++
+			if problem.IsCorrect(answer) {
+				result.IncreaseScore()
 			}
 		case <-timeExceedChannel:
 			fmt.Println("Time limit exceeded.")
-			result.printSummary()
+			result.PrintSummary()
 			os.Exit(0)
 		}
 	}
@@ -101,14 +111,14 @@ func askQuestions(problems *[]Problem) Result {
 	return result
 }
 
-func getUserInput(channel chan<- string, problemId int, problem Problem) {
-	fmt.Printf("%d. %s: ", problemId+1, problem.Question)
+func getUserInput(channel chan<- string, problemID int, problem Problem) {
+	fmt.Printf("%d. %s: ", problemID+1, problem.Question)
 	var answer string
 	fmt.Scanf("%s\n", &answer)
 	channel <- answer
 }
 
-func timer(channel chan<- bool) {
-	time.Sleep(2 * time.Second)
+func timer(channel chan<- bool, timeLimit int) {
+	time.Sleep(time.Duration(timeLimit) * time.Second)
 	channel <- true
 }
